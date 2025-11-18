@@ -1,50 +1,57 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from fastapi import FastAPI, Form
+from fastapi.responses import HTMLResponse
+import xgboost as xgb
 import numpy as np
-import joblib
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
-import os
-from xgboost import XGBRegressor
+from pathlib import Path
+import pandas as pd
 
-
-
-
-# Load the pre-trained model
-model_path = os.path.join(os.path.dirname(__file__), "model", "model.json")
-model = XGBRegressor()
-model.load_model(model_path)
-
-# Initialize FastAPI app
 app = FastAPI()
 
-# Allow frontend (CORS)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # In production, replace with your frontend URL
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Load XGBoost model
+model = xgb.Booster()
+model.load_model("model/model.json")
 
-# Define request body schema
-class SalesInput(BaseModel):
-    sales: list[float]  # Expect exactly 6 values
+BASE_DIR = Path(__file__).resolve().parent  # directory of app.py
+HTML_FILE = BASE_DIR / "frontend" / "index.html"
+
+# @app.get("/", response_class=HTMLResponse)
+# def read_root():
+#     try:
+#         content = HTML_FILE.read_text()
+#         return HTMLResponse(content=content)
+#     except Exception as e:
+#         return HTMLResponse(content=f"<h1>Error loading HTML</h1><p>{e}</p>")
+
+@app.get("/", response_class=HTMLResponse)
+def read_root():
+    try:
+        content = HTML_FILE.read_text()
+        return HTMLResponse(content=content)
+    except Exception as e:
+        return HTMLResponse(content=f"<h1>Error loading HTML</h1><p>{e}</p>")
 
 
-# Mount the 'frontend' directory
-app.mount("/static", StaticFiles(directory="frontend"), name="static")
-
-# Serve index.html at root
-@app.get("/")
-def serve_index():
-    return FileResponse(os.path.join("frontend", "index.html"))
-
-# Define the prediction endpoint
 @app.post("/predict")
-async def predict(input: SalesInput):
-    if len(input.sales) != 6:
-        return {"error": "Exactly 6 months of sales data required."}
+def predict(
+    lag1: float = Form(...),
+    lag2: float = Form(...),
+    lag3: float = Form(...),
+    lag4: float = Form(...),
+    lag5: float = Form(...),
+    lag6: float = Form(...)
+):
+     # Create a DataFrame with the same column names as used in training
+    data = pd.DataFrame([{
+        "Sales_Lag_1_Month": lag1,
+        "Sales_Lag_2_Month": lag2,
+        "Sales_Lag_3_Month": lag3,
+        "Sales_Lag_4_Month": lag4,
+        "Sales_Lag_5_Month": lag5,
+        "Sales_Lag_6_Month": lag6
+    }])
+    dmatrix = xgb.DMatrix(data)
+    prediction = model.predict(dmatrix)[0]
+    return {"prediction": float(prediction)}
     
     data = np.array(input.sales).reshape(1, -1)
     prediction = model.predict(data)[0]
