@@ -5,17 +5,23 @@ import numpy as np
 from pathlib import Path
 import pandas as pd
 
+# -------------------------------------------------
+# Create FastAPI app
+# -------------------------------------------------
 app = FastAPI()
 
-# -----------------------------
+# -------------------------------------------------
 # Load XGBoost model
-# -----------------------------
+# -------------------------------------------------
+# Assumes your project structure is:
+# app.py
+# model/model.json
 model = xgb.Booster()
-model.load_model("model/model.json")   # Make sure this path is correct!
+model.load_model("model/model.json")   # adjust path if needed
 
-# -----------------------------
-# Serve frontend
-# -----------------------------
+# -------------------------------------------------
+# Serve frontend HTML
+# -------------------------------------------------
 BASE_DIR = Path(__file__).resolve().parent
 HTML_FILE = BASE_DIR / "frontend" / "index.html"
 
@@ -30,9 +36,9 @@ def read_root():
             status_code=500
         )
 
-# -----------------------------
+# -------------------------------------------------
 # Prediction endpoint
-# -----------------------------
+# -------------------------------------------------
 @app.post("/predict")
 def predict(
     lag1: float = Form(...),
@@ -42,7 +48,7 @@ def predict(
     lag5: float = Form(...),
     lag6: float = Form(...)
 ):
-    # Build DataFrame with training column names
+    # Build DataFrame with the column names used in training
     data = pd.DataFrame([{
         "Sales_Lag_1_Month": lag1,
         "Sales_Lag_2_Month": lag2,
@@ -52,10 +58,10 @@ def predict(
         "Sales_Lag_6_Month": lag6
     }])
 
-    # Convert to DMatrix
+    # Convert to DMatrix for XGBoost
     dmatrix = xgb.DMatrix(data)
 
-    # Predict
+    # Make prediction
     prediction = model.predict(dmatrix)[0]
 
     return {"prediction": float(prediction)}
