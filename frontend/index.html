@@ -3,57 +3,92 @@
 <head>
   <meta charset="UTF-8" />
   <title>Car Sales Prediction</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 40px auto;
+      padding: 0 16px;
+    }
+    h1 {
+      text-align: center;
+    }
+    .form-row {
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    label {
+      flex: 1;
+    }
+    input[type="number"] {
+      flex: 1;
+      padding: 6px;
+    }
+    button {
+      margin-top: 16px;
+      padding: 10px 16px;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    #prediction-box {
+      margin-top: 24px;
+      padding: 12px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background: #f9f9f9;
+    }
+  </style>
 </head>
 <body>
   <h1>Car Sales Prediction</h1>
 
-  <div>
-    <label for="lag1">Price Lag 1:</label>
-    <input id="lag1" type="number" step="any" />
-  </div>
-  <div>
-    <label for="lag2">Price Lag 2:</label>
-    <input id="lag2" type="number" step="any" />
-  </div>
-  <div>
-    <label for="lag3">Price Lag 3:</label>
-    <input id="lag3" type="number" step="any" />
-  </div>
-  <div>
-    <label for="lag4">Price Lag 4:</label>
-    <input id="lag4" type="number" step="any" />
-  </div>
-  <div>
-    <label for="lag5">Price Lag 5:</label>
-    <input id="lag5" type="number" step="any" />
-  </div>
-  <div>
-    <label for="lag6">Price Lag 6:</label>
-    <input id="lag6" type="number" step="any" />
-  </div>
+  <form id="predict-form">
+    <div class="form-row">
+      <label for="lag1">Price Lag 1:</label>
+      <input id="lag1" name="lag1" type="number" step="any" required />
+    </div>
+    <div class="form-row">
+      <label for="lag2">Price Lag 2:</label>
+      <input id="lag2" name="lag2" type="number" step="any" required />
+    </div>
+    <div class="form-row">
+      <label for="lag3">Price Lag 3:</label>
+      <input id="lag3" name="lag3" type="number" step="any" required />
+    </div>
+    <div class="form-row">
+      <label for="lag4">Price Lag 4:</label>
+      <input id="lag4" name="lag4" type="number" step="any" required />
+    </div>
+    <div class="form-row">
+      <label for="lag5">Price Lag 5:</label>
+      <input id="lag5" name="lag5" type="number" step="any" required />
+    </div>
+    <div class="form-row">
+      <label for="lag6">Price Lag 6:</label>
+      <input id="lag6" name="lag6" type="number" step="any" required />
+    </div>
 
-  <button id="predict-btn">Get Prediction</button>
+    <button type="submit">Get Prediction</button>
+  </form>
 
-  <h2>Predicted Sales: <span id="prediction-output">N/A</span></h2>
+  <div id="prediction-box">
+    <strong>Predicted Sales:</strong>
+    <span id="prediction-output">N/A</span>
+  </div>
 
   <script>
-    document.getElementById("predict-btn").addEventListener("click", async () => {
-      // Collect values
-      const lag1 = document.getElementById("lag1").value;
-      const lag2 = document.getElementById("lag2").value;
-      const lag3 = document.getElementById("lag3").value;
-      const lag4 = document.getElementById("lag4").value;
-      const lag5 = document.getElementById("lag5").value;
-      const lag6 = document.getElementById("lag6").value;
+    const form = document.getElementById("predict-form");
+    const output = document.getElementById("prediction-output");
 
-      // Build form data to match FastAPI's Form(...) inputs
-      const formData = new FormData();
-      formData.append("lag1", lag1);
-      formData.append("lag2", lag2);
-      formData.append("lag3", lag3);
-      formData.append("lag4", lag4);
-      formData.append("lag5", lag5);
-      formData.append("lag6", lag6);
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault(); // don't reload page
+
+      const formData = new FormData(form);
+
+      output.textContent = "Loading...";
 
       try {
         const res = await fetch("/predict", {
@@ -63,17 +98,16 @@
 
         if (!res.ok) {
           const text = await res.text();
-          document.getElementById("prediction-output").innerText =
-            "Error: " + res.status + " " + text;
+          output.textContent = `Error: ${res.status} ${text}`;
           return;
         }
 
         const data = await res.json();
-        document.getElementById("prediction-output").innerText =
-          data.prediction.toFixed(2);
+
+        // Format to 2 decimals; adjust if you want raw value
+        output.textContent = data.prediction.toFixed(2);
       } catch (err) {
-        document.getElementById("prediction-output").innerText =
-          "Error: " + err;
+        output.textContent = "Error: " + err;
       }
     });
   </script>
