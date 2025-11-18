@@ -1,82 +1,81 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Car Sales Predictor</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        .container { max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ccc; border-radius: 8px; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; }
-        input[type="number"] { width: calc(100% - 22px); padding: 8px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 4px; }
-        button { background-color: #4CAF50; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
-        button:hover { background-color: #45a049; }
-        #result { margin-top: 20px; padding: 10px; border: 1px solid #eee; background-color: #f9f9f9; border-radius: 4px; }
-    </style>
+  <meta charset="UTF-8" />
+  <title>Car Sales Prediction</title>
 </head>
 <body>
-    <div class="container">
-        <h1>Car Sales Prediction</h1>
-        <form id="predictionForm">
-            <label for="price_lag_1">Price Lag 1:</label>
-            <input type="number" id="price_lag_1" name="price_lag_1" value="10000" step="0.01" required>
+  <h1>Car Sales Prediction</h1>
 
-            <label for="price_lag_2">Price Lag 2:</label>
-            <input type="number" id="price_lag_2" name="price_lag_2" value="9500" step="0.01" required>
+  <div>
+    <label for="lag1">Price Lag 1:</label>
+    <input id="lag1" type="number" step="any" />
+  </div>
+  <div>
+    <label for="lag2">Price Lag 2:</label>
+    <input id="lag2" type="number" step="any" />
+  </div>
+  <div>
+    <label for="lag3">Price Lag 3:</label>
+    <input id="lag3" type="number" step="any" />
+  </div>
+  <div>
+    <label for="lag4">Price Lag 4:</label>
+    <input id="lag4" type="number" step="any" />
+  </div>
+  <div>
+    <label for="lag5">Price Lag 5:</label>
+    <input id="lag5" type="number" step="any" />
+  </div>
+  <div>
+    <label for="lag6">Price Lag 6:</label>
+    <input id="lag6" type="number" step="any" />
+  </div>
 
-            <label for="price_lag_3">Price Lag 3:</label>
-            <input type="number" id="price_lag_3" name="price_lag_3" value="9000" step="0.01" required>
+  <button id="predict-btn">Get Prediction</button>
 
-            <label for="price_lag_4">Price Lag 4:</label>
-            <input type="number" id="price_lag_4" name="price_lag_4" value="8500" step="0.01" required>
+  <h2>Predicted Sales: <span id="prediction-output">N/A</span></h2>
 
-            <label for="price_lag_5">Price Lag 5:</label>
-            <input type="number" id="price_lag_5" name="price_lag_5" value="8000" step="0.01" required>
+  <script>
+    document.getElementById("predict-btn").addEventListener("click", async () => {
+      // Collect values
+      const lag1 = document.getElementById("lag1").value;
+      const lag2 = document.getElementById("lag2").value;
+      const lag3 = document.getElementById("lag3").value;
+      const lag4 = document.getElementById("lag4").value;
+      const lag5 = document.getElementById("lag5").value;
+      const lag6 = document.getElementById("lag6").value;
 
-            <label for="price_lag_6">Price Lag 6:</label>
-            <input type="number" id="price_lag_6" name="price_lag_6" value="7500" step="0.01" required>
+      // Build form data to match FastAPI's Form(...) inputs
+      const formData = new FormData();
+      formData.append("lag1", lag1);
+      formData.append("lag2", lag2);
+      formData.append("lag3", lag3);
+      formData.append("lag4", lag4);
+      formData.append("lag5", lag5);
+      formData.append("lag6", lag6);
 
-            <button type="submit">Get Prediction</button>
-        </form>
-        <div id="result">
-            <strong>Predicted Sales:</strong> <span id="predictedSales"></span>
-        </div>
-    </div>
-
-    <script>
-        document.getElementById('predictionForm').addEventListener('submit', async function(event) {
-            event.preventDefault();
-
-            const data = {
-                price_lag_1: parseFloat(document.getElementById('price_lag_1').value),
-                price_lag_2: parseFloat(document.getElementById('price_lag_2').value),
-                price_lag_3: parseFloat(document.getElementById('price_lag_3').value),
-                price_lag_4: parseFloat(document.getElementById('price_lag_4').value),
-                price_lag_5: parseFloat(document.getElementById('price_lag_5').value),
-                price_lag_6: parseFloat(document.getElementById('price_lag_6').value)
-            };
-
-            try {
-                const response = await fetch('http://127.0.0.1:8000/predict/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(data)
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                const result = await response.json();
-                document.getElementById('predictedSales').textContent = result.predicted_sales.toFixed(2);
-            } catch (error) {
-                console.error('Error:', error);
-                document.getElementById('predictedSales').textContent = 'Error during prediction.';
-            }
+      try {
+        const res = await fetch("/predict", {
+          method: "POST",
+          body: formData,
         });
-    </script>
+
+        if (!res.ok) {
+          const text = await res.text();
+          document.getElementById("prediction-output").innerText =
+            "Error: " + res.status + " " + text;
+          return;
+        }
+
+        const data = await res.json();
+        document.getElementById("prediction-output").innerText =
+          data.prediction.toFixed(2);
+      } catch (err) {
+        document.getElementById("prediction-output").innerText =
+          "Error: " + err;
+      }
+    });
+  </script>
 </body>
 </html>
