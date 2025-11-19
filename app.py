@@ -1,27 +1,16 @@
-from fastapi import FastAPI, Form
+from fastapi import FastAPI, Form, HTTPException
 from fastapi.responses import HTMLResponse
 import xgboost as xgb
 import numpy as np
 from pathlib import Path
 import pandas as pd
 
-# -------------------------------------------------
-# Create FastAPI app
-# -------------------------------------------------
 app = FastAPI()
 
-# -------------------------------------------------
-# Load XGBoost model
-# -------------------------------------------------
-# Assumes your project structure is:
-# app.py
-# model/model.json
+# Load model (as before)
 model = xgb.Booster()
-model.load_model("model/model.json")   # adjust path if needed
+model.load_model("model/model.json")
 
-# -------------------------------------------------
-# Serve frontend HTML
-# -------------------------------------------------
 BASE_DIR = Path(__file__).resolve().parent
 HTML_FILE = BASE_DIR / "frontend" / "index.html"
 
@@ -33,12 +22,9 @@ def read_root():
     except Exception as e:
         return HTMLResponse(
             content=f"<h1>Error loading HTML</h1><p>{str(e)}</p>",
-            status_code=500
+            status_code=500,
         )
 
-# -------------------------------------------------
-# Prediction endpoint
-# -------------------------------------------------
 @app.post("/predict")
 def predict(
     lag1: float = Form(...),
@@ -46,22 +32,26 @@ def predict(
     lag3: float = Form(...),
     lag4: float = Form(...),
     lag5: float = Form(...),
-    lag6: float = Form(...)
+    lag6: float = Form(...),
 ):
-    # Build DataFrame with the column names used in training
-    data = pd.DataFrame([{
-        "Sales_Lag_1_Month": lag1,
-        "Sales_Lag_2_Month": lag2,
-        "Sales_Lag_3_Month": lag3,
-        "Sales_Lag_4_Month": lag4,
-        "Sales_Lag_5_Month": lag5,
-        "Sales_Lag_6_Month": lag6
-    }])
+    try:
+        # 1) Make sure everything is numeric
+        features = np.array([[lag1, lag2, lag3, lag4, lag5, lag6]], dtype=float)
 
-    # Convert to DMatrix for XGBoost
-    dmatrix = xgb.DMatrix(data)
+        # 2) Use numpy -> DMatrix explicitly (avoids some pandas/xgboost quirks)
+        feature_names = [
+            "Sales_Lag_1_Month",
+            "Sales_Lag_2_Month",
+            "Sales_Lag_3_Month",
+            "Sales_Lag_4_Month",
+            "Sales_Lag_5_Month",
+            "Sales_Lag_6_Month",
+        ]
+        dmatrix = xgb.DMatrix(features, feature_names=feature_names)
 
-    # Make prediction
-    prediction = model.predict(dmatrix)[0]
-
-    return {"prediction": float(prediction)}
+        # 3) Predict
+        pred = model.predict(dmatrix)[0]
+        return {"prediction": float(pred)}
+    except Exception as e:
+        # This will still return 500, but with a helpful message
+        raise HTTPException(status_code=500, detail=f"Prediction error: {e}")
