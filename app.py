@@ -3,14 +3,21 @@ from fastapi.responses import HTMLResponse
 import xgboost as xgb
 import numpy as np
 from pathlib import Path
-import pandas as pd
 
 app = FastAPI()
 
-# Load model (as before)
+# -----------------------------
+# Load XGBoost model
+# -----------------------------
+# Assumes project structure:
+# app.py
+# model/model.json
 model = xgb.Booster()
 model.load_model("model/model.json")
 
+# -----------------------------
+# Serve frontend
+# -----------------------------
 BASE_DIR = Path(__file__).resolve().parent
 HTML_FILE = BASE_DIR / "frontend" / "index.html"
 
@@ -25,6 +32,9 @@ def read_root():
             status_code=500,
         )
 
+# -----------------------------
+# Prediction endpoint
+# -----------------------------
 @app.post("/predict")
 def predict(
     lag1: float = Form(...),
@@ -35,23 +45,24 @@ def predict(
     lag6: float = Form(...),
 ):
     try:
-        # 1) Make sure everything is numeric
+        # Match the model's feature names exactly
+        feature_names = [
+            "price_lag_1",
+            "price_lag_2",
+            "price_lag_3",
+            "price_lag_4",
+            "price_lag_5",
+            "price_lag_6",
+        ]
+
+        # Build a 2D numpy array of features (1 row, 6 columns)
         features = np.array([[lag1, lag2, lag3, lag4, lag5, lag6]], dtype=float)
 
-        # 2) Use numpy -> DMatrix explicitly (avoids some pandas/xgboost quirks)
-        feature_names = [
-            "Sales_Lag_1_Month",
-            "Sales_Lag_2_Month",
-            "Sales_Lag_3_Month",
-            "Sales_Lag_4_Month",
-            "Sales_Lag_5_Month",
-            "Sales_Lag_6_Month",
-        ]
         dmatrix = xgb.DMatrix(features, feature_names=feature_names)
 
-        # 3) Predict
         pred = model.predict(dmatrix)[0]
         return {"prediction": float(pred)}
+
     except Exception as e:
-        # This will still return 500, but with a helpful message
+        # Surface error text so you see it instead of a generic 500
         raise HTTPException(status_code=500, detail=f"Prediction error: {e}")
