@@ -1,17 +1,17 @@
 from fastapi import FastAPI, Form, HTTPException
 from fastapi.responses import HTMLResponse
-import xgboost as xgb
-import numpy as np
 from pathlib import Path
+import numpy as np
+import xgboost as xgb
 
 app = FastAPI()
 
 # -----------------------------
 # Load XGBoost model
 # -----------------------------
-# Assumes project structure:
-# app.py
-# model/model.json
+# Assumes:
+#   app.py
+#   model/model.json
 model = xgb.Booster()
 model.load_model("model/model.json")
 
@@ -24,7 +24,7 @@ HTML_FILE = BASE_DIR / "frontend" / "index.html"
 @app.get("/", response_class=HTMLResponse)
 def read_root():
     try:
-        content = HTML_FILE.read_text()
+        content = HTML_FILE.read_text(encoding="utf-8")
         return HTMLResponse(content=content)
     except Exception as e:
         return HTMLResponse(
@@ -45,7 +45,8 @@ def predict(
     lag6: float = Form(...),
 ):
     try:
-        # Match the model's feature names exactly
+        # These **must** match model.json:
+        # "feature_names": ["price_lag_1", ..., "price_lag_6"]
         feature_names = [
             "price_lag_1",
             "price_lag_2",
@@ -55,7 +56,7 @@ def predict(
             "price_lag_6",
         ]
 
-        # Build a 2D numpy array of features (1 row, 6 columns)
+        # 1 row, 6 columns
         features = np.array([[lag1, lag2, lag3, lag4, lag5, lag6]], dtype=float)
 
         dmatrix = xgb.DMatrix(features, feature_names=feature_names)
@@ -64,5 +65,5 @@ def predict(
         return {"prediction": float(pred)}
 
     except Exception as e:
-        # Surface error text so you see it instead of a generic 500
+        # Show the underlying error in the response while debugging
         raise HTTPException(status_code=500, detail=f"Prediction error: {e}")
